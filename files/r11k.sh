@@ -196,15 +196,26 @@ else
 	FONT_NORMAL=""
 fi
 
+# List all submodules that have changes
+function changed_submodules() {
+    (
+        IFS=":"
+		# git status will not warn when a submodule has not been checked out yet.
+        ( git status --porcelain=v2 | grep '^[12u] .. S[CMU.]\{3\}' | awk '{print $9}'  || true )
+	    ( git submodule status | grep '^[-+]' | awk '{print $2}' || true )
+    ) | sort | uniq
+}
+
 function do_submodules() {
 	local branch="$1"
 	local url lmirror mod
 	git submodule init
 	git submodule sync >/dev/null
-	git submodule | awk '{print $2}' | while read mod; do
+	changed_submodules | while read mod; do
 		echo "${FONT_GREEN}Checking out submodule ${FONT_NORMAL}${FONT_GREEN_BOLD}${branch}${FONT_NORMAL}${FONT_GREEN}/${mod}${FONT_NORMAL}"
 
 		url="$( git config --get "submodule.${mod}.url" )"
+
 		lmirror="$( git_mirror "${url}" )"
 		if [ $? -ne 0 ]; then
 			return 1
